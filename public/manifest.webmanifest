@@ -1,0 +1,19 @@
+{
+  "name": "StudyQuest — 勉強タイマー & ランキング",
+  "short_name": "StudyQuest",
+  "description": "目標時間を決めて集中。達成した分だけスコアが貯まり、ランキングで競える勉強タイマー。",
+  "lang": "ja",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f1a",
+  "theme_color": "#0b0f1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
