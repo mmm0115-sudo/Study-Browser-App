@@ -66,9 +66,22 @@ npm run deploy
 > Hosting だけ更新したいときは `firebase deploy --only hosting`、
 > ルールだけなら `firebase deploy --only firestore:rules`。
 
+### GitHub Pages で公開する場合（無料）
+このプロジェクトは GitHub Pages 対応済みです（`vite.config.ts` の `base: "./"` で相対パス配信、ルーティングは `HashRouter`）。
+
+**自動デプロイ（推奨）**: `.github/workflows/deploy.yml` を同梱しています。
+1. リポジトリの **Settings → Pages → Build and deployment → Source** を **「GitHub Actions」** に設定
+2. `main`（または `master`）に push すると自動でビルド＆公開されます
+3. 公開URLは `https://<ユーザー名>.github.io/<リポジトリ名>/`
+
+**重要 — Google ログインを動かすために**:
+Firebase コンソール → **Authentication → Settings → 承認済みドメイン** に
+`<ユーザー名>.github.io` を**追加**してください。これを忘れるとログインのポップアップがブロックされます。
+
 ### Vercel / Netlify で公開したい場合
 Firebase Hosting の代わりに Vercel や Netlify でも無料公開できます。
-ビルドコマンド `npm run build` / 公開ディレクトリ `dist` を指定し、SPA なので全パスを `/index.html` に rewrite する設定を入れてください。その場合も Firebase の **承認済みドメイン** に公開URLの追加を忘れずに。
+ビルドコマンド `npm run build` / 公開ディレクトリ `dist` を指定してください。
+こちらも Firebase の **承認済みドメイン** に公開URLの追加を忘れずに。
 
 ---
 
