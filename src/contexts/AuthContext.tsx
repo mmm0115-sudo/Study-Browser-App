@@ -7,8 +7,10 @@ import {
   type ReactNode,
 } from "react";
 import {
+  createUserWithEmailAndPassword,
   getRedirectResult,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type User,
@@ -24,6 +26,8 @@ interface AuthContextValue {
   /** 直近のログイン関連エラー（auth/◯◯◯）。画面に表示して原因特定に使う。 */
   authError: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -86,6 +90,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           setAuthError(code ?? "auth/unknown");
+          throw e;
+        }
+      },
+      async signInWithEmail(email, password) {
+        setAuthError(null);
+        try {
+          await signInWithEmailAndPassword(auth, email.trim(), password);
+        } catch (e: unknown) {
+          setAuthError((e as { code?: string })?.code ?? "auth/unknown");
+          throw e;
+        }
+      },
+      async signUpWithEmail(email, password) {
+        setAuthError(null);
+        try {
+          await createUserWithEmailAndPassword(auth, email.trim(), password);
+        } catch (e: unknown) {
+          setAuthError((e as { code?: string })?.code ?? "auth/unknown");
           throw e;
         }
       },
