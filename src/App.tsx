@@ -3,6 +3,7 @@ import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import AmbientBackground from "./components/AmbientBackground";
 import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
 import TimerPage from "./pages/TimerPage";
 import RankingPage from "./pages/RankingPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -23,16 +24,20 @@ function Splash() {
 }
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
   if (loading) return <Splash />;
   if (!user) return <Login />;
+  // ログイン済みだがプロフィール取得中
+  if (!profile) return <Splash />;
+  // 初回セットアップ未完了
+  if (!profile.onboarded) return <Onboarding />;
 
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<TimerPage />} />
-        <Route path="/ranking" element={<RankingPage />} />
+        <Route path="/" element={<RankingPage />} />
+        <Route path="/timer" element={<TimerPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

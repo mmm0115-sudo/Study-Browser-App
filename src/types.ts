@@ -19,6 +19,8 @@ export interface UserProfile {
   lastStudyDate: string;
   /** 連続学習日数 */
   streak: number;
+  /** 初回セットアップ（ニックネーム設定）を完了したか */
+  onboarded?: boolean;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 }

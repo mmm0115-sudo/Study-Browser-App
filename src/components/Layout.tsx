@@ -6,8 +6,8 @@ import Avatar from "./Avatar";
 import { TimerIcon, TrophyIcon, UserIcon, BoltIcon } from "./icons";
 
 const NAV = [
-  { to: "/", label: "タイマー", Icon: TimerIcon },
-  { to: "/ranking", label: "ランキング", Icon: TrophyIcon },
+  { to: "/", label: "ランキング", Icon: TrophyIcon },
+  { to: "/timer", label: "勉強する", Icon: TimerIcon },
   { to: "/profile", label: "マイページ", Icon: UserIcon },
 ];
 

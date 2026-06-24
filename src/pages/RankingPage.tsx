@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchLeaderboard } from "../data/store";
-import type { LeaderboardEntry } from "../types";
+import type { LeaderboardEntry, UserProfile } from "../types";
+import { localDateKey } from "../lib/format";
 import Avatar from "../components/Avatar";
 import { formatDuration, formatScore } from "../lib/format";
-import { TrophyIcon, FlameIcon, BoltIcon } from "../components/icons";
+import { TrophyIcon, FlameIcon, BoltIcon, PlayIcon } from "../components/icons";
 
 export default function RankingPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,9 +35,13 @@ export default function RankingPage() {
   const podium = entries.slice(0, 3);
   const rest = entries.slice(3);
 
+  const myRank = myIndex >= 0 ? myIndex + 1 : null;
+
   return (
     <div>
-      <header className="mb-6 flex items-end justify-between">
+      <Hero profile={profile} rank={myRank} loading={loading} />
+
+      <header className="mb-4 flex items-end justify-between">
         <div>
           <h1 className="font-display text-2xl font-extrabold">ランキング</h1>
           <p className="mt-1 text-sm text-white/50">達成スコアで競い合おう</p>
@@ -75,6 +81,69 @@ export default function RankingPage() {
         </>
       )}
     </div>
+  );
+}
+
+function Hero({
+  profile,
+  rank,
+  loading,
+}: {
+  profile: UserProfile | null;
+  rank: number | null;
+  loading: boolean;
+}) {
+  const today = localDateKey();
+  const studiedToday =
+    profile?.lastStudyDate === today && (profile?.todaySeconds ?? 0) > 0;
+  const name = profile?.displayName ?? "あなた";
+
+  const headline = studiedToday
+    ? "今日もよくがんばってる！この調子で上を目指そう🔥"
+    : "ライバルはもう勉強中。あなたも追いつこう！";
+
+  return (
+    <div className="glass-strong relative mb-5 overflow-hidden rounded-3xl p-5 sm:p-6">
+      <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-accent-500/25 blur-3xl" />
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-white/50">こんにちは、{name} さん</p>
+            <h2 className="mt-1 font-display text-lg font-extrabold leading-snug text-white sm:text-xl">
+              {headline}
+            </h2>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-[11px] text-white/45">現在の順位</div>
+            <div className="font-display text-3xl font-extrabold text-gradient">
+              {loading ? "…" : rank ? `${rank}位` : "圏外"}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          <Pill icon={<BoltIcon className="h-3.5 w-3.5 text-accent-300" />} text={`${formatScore(profile?.totalScore ?? 0)} pt`} />
+          <Pill icon={<FlameIcon className="h-3.5 w-3.5 text-amber-400" />} text={`${profile?.streak ?? 0}日連続`} />
+        </div>
+
+        <Link
+          to="/timer"
+          className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-accent-500 to-violet-400 px-5 py-3.5 font-display text-base font-bold text-white shadow-lg shadow-accent-500/30 transition hover:opacity-95 active:scale-[0.98]"
+        >
+          <PlayIcon className="h-5 w-5" />
+          {studiedToday ? "もう一度勉強する" : "勉強をはじめる"}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Pill({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/75 ring-1 ring-white/10">
+      {icon}
+      {text}
+    </span>
   );
 }
 

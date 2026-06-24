@@ -41,6 +41,7 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
       todaySeconds: 0,
       lastStudyDate: "",
       streak: 0,
+      onboarded: false,
     };
     await setDoc(ref, {
       ...fresh,
@@ -50,12 +51,25 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
     return { ...fresh, createdAt: null, updatedAt: null };
   }
 
-  // 表示名/アイコンが変わっていたら同期（ランキング表示のため）
+  // アイコンだけ Google と同期する。
+  // 表示名はユーザーが編集できるので、ここでは上書きしない。
   const data = snap.data() as UserProfile;
-  if (data.displayName !== displayName || data.photoURL !== photoURL) {
-    await setDoc(ref, { displayName, photoURL, updatedAt: serverTimestamp() }, { merge: true });
+  if (photoURL && data.photoURL !== photoURL) {
+    await setDoc(ref, { photoURL, updatedAt: serverTimestamp() }, { merge: true });
   }
-  return { ...data, uid: user.uid, displayName, photoURL };
+  return { ...data, uid: user.uid };
+}
+
+/** 表示名やオンボーディング状態など、ユーザー設定を更新する */
+export async function updateUserSettings(
+  uid: string,
+  fields: { displayName?: string; onboarded?: boolean }
+): Promise<void> {
+  await setDoc(
+    userRef(uid),
+    { ...fields, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
 }
 
 /** プロフィールの購読（リアルタイム反映） */

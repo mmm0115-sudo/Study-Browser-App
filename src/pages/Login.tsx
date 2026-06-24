@@ -3,8 +3,17 @@ import { useAuth } from "../contexts/AuthContext";
 import AmbientBackground from "../components/AmbientBackground";
 import { BoltIcon, GoogleIcon, TimerIcon, TrophyIcon, FlameIcon } from "../components/icons";
 
+const ERROR_HINTS: Record<string, string> = {
+  "auth/unauthorized-domain":
+    "このドメインが未許可です。Firebase の Authentication → 設定 → 承認済みドメイン に追加してください。",
+  "auth/operation-not-allowed":
+    "Googleログインが無効です。Firebase の Authentication → Sign-in method で Google を有効にしてください。",
+  "auth/popup-blocked": "ポップアップがブロックされました。ブラウザの設定で許可してください。",
+  "auth/network-request-failed": "通信エラーです。ネット接続を確認してください。",
+};
+
 export default function Login() {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, authError } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,12 +23,15 @@ export default function Login() {
     try {
       await signInWithGoogle();
     } catch (e) {
+      const code = (e as { code?: string })?.code ?? "auth/unknown";
       console.error(e);
-      setError("ログインに失敗しました。もう一度お試しください。");
+      setError(code);
     } finally {
       setBusy(false);
     }
   }
+
+  const shownError = error ?? authError;
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-10">
@@ -73,7 +85,18 @@ export default function Login() {
             {busy ? "ログイン中…" : "Googleではじめる"}
           </button>
 
-          {error && <p className="mt-3 text-center text-xs text-rose-300">{error}</p>}
+          {shownError && (
+            <div className="mt-3 rounded-xl bg-rose-400/10 px-3 py-2.5 text-center ring-1 ring-rose-300/20">
+              <p className="text-xs font-semibold text-rose-200">
+                ログイン失敗：<span className="font-mono">{shownError}</span>
+              </p>
+              {ERROR_HINTS[shownError] && (
+                <p className="mt-1 text-[11px] leading-relaxed text-rose-200/80">
+                  {ERROR_HINTS[shownError]}
+                </p>
+              )}
+            </div>
+          )}
 
           <p className="mt-4 text-center text-[11px] leading-relaxed text-white/35">
             ログインすると利用規約に同意したものとみなされます。
