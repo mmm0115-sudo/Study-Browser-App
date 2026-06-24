@@ -10,7 +10,6 @@ import {
   getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   type User,
 } from "firebase/auth";
@@ -30,11 +29,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function isMobile(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(navigator.userAgent);
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -42,12 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    // リダイレクト方式から戻ってきたときの結果・エラーを拾う（モバイル対策）
-    getRedirectResult(auth).catch((e: unknown) => {
-      const code = (e as { code?: string })?.code ?? "auth/unknown";
-      console.error("リダイレクトログインエラー", e);
-      setAuthError(code);
-    });
+    // 以前のリダイレクト方式の残骸を片付ける（エラーは画面に出さずログのみ）。
+    // ストレージ分離環境では "missing initial state" になるが無視してよい。
+    getRedirectResult(auth).catch((e) => console.warn("redirect cleanup", e));
 
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -81,27 +72,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       async signInWithGoogle() {
         setAuthError(null);
-        // モバイルはポップアップが不安定なのでリダイレクト方式を優先
-        if (isMobile()) {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        }
+        // ポップアップ方式で統一。リダイレクト方式はドメインが別
+        // （github.io ↔ firebaseapp.com）だとストレージ分離で壊れるため使わない。
         try {
           await signInWithPopup(auth, googleProvider);
         } catch (e: unknown) {
           const code = (e as { code?: string })?.code;
           if (
-            code === "auth/popup-blocked" ||
-            code === "auth/cancelled-popup-request" ||
-            code === "auth/operation-not-supported-in-this-environment"
+            code === "auth/popup-closed-by-user" ||
+            code === "auth/cancelled-popup-request"
           ) {
-            await signInWithRedirect(auth, googleProvider);
-          } else if (code === "auth/popup-closed-by-user") {
             // ユーザーが閉じただけ。無視。
-          } else {
-            setAuthError(code ?? "auth/unknown");
-            throw e;
+            return;
           }
+          setAuthError(code ?? "auth/unknown");
+          throw e;
         }
       },
       async logout() {
