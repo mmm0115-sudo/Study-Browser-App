@@ -5,29 +5,17 @@ service cloud.firestore {
 
     // ユーザープロフィール
     match /users/{uid} {
-      // ランキング表示のため、ログイン済みユーザーは全員のプロフィールを読める
+      // ログイン済みなら全員のプロフィールを読める（ランキング表示のため）
       allow read: if request.auth != null;
 
       // 自分のドキュメントだけ作成・更新できる
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && isValidProfile(request.resource.data);
-      allow update: if request.auth != null
-                    && request.auth.uid == uid
-                    && isValidProfile(request.resource.data);
+      allow create, update: if request.auth != null && request.auth.uid == uid;
       allow delete: if false;
 
-      // 勉強セッション履歴は本人のみ
+      // 勉強セッション履歴は本人のみ読み書き可
       match /sessions/{sessionId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
-  }
-
-  // 数値フィールドが負にならない等の最低限の検証
-  function isValidProfile(d) {
-    return d.totalScore is number && d.totalScore >= 0
-        && d.totalSeconds is number && d.totalSeconds >= 0
-        && d.totalSessions is number && d.totalSessions >= 0;
   }
 }
