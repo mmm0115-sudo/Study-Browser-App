@@ -90,6 +90,13 @@ export const BoltIcon = (p: P) => (
   </svg>
 );
 
+export const SparkleIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" />
+    <path d="M19 14l1 2.5L22.5 18 20 19l-1 2.5L18 19l-2.5-1 2.5-1 1-2.5z" />
+  </svg>
+);
+
 export const GoogleIcon = (p: P) => (
   <svg viewBox="0 0 24 24" width={24} height={24} {...p}>
     <path

@@ -7,7 +7,7 @@ import { formatClock, formatDuration, formatTimeOfDay } from "../lib/format";
 import CircularProgress from "../components/CircularProgress";
 import CompletionModal from "../components/CompletionModal";
 import Confetti from "../components/Confetti";
-import { PlayIcon, PauseIcon, StopIcon, ClockIcon, FlameIcon, BoltIcon, CheckIcon } from "../components/icons";
+import { PlayIcon, PauseIcon, StopIcon, ClockIcon, FlameIcon, BoltIcon, CheckIcon, SparkleIcon } from "../components/icons";
 
 interface Completion {
   elapsedSeconds: number;
@@ -33,6 +33,7 @@ export default function TimerPage() {
   }, []);
 
   const active = timer.status !== "idle";
+  const boostMultiplier = profile?.boosterActive ? profile.boosterMultiplier ?? 2 : 1;
   const achieved = isAchieved(timer.elapsedSeconds, timer.goalSeconds);
   const progress = timer.goalSeconds > 0 ? timer.elapsedSeconds / timer.goalSeconds : 0;
   const remaining = Math.max(0, timer.goalSeconds - timer.elapsedSeconds);
@@ -82,7 +83,7 @@ export default function TimerPage() {
       return;
     }
     timer.pause();
-    const earnedScore = calcEarnedScore(timer.elapsedSeconds, timer.goalSeconds);
+    const earnedScore = calcEarnedScore(timer.elapsedSeconds, timer.goalSeconds, boostMultiplier);
     setCompletion({
       elapsedSeconds: timer.elapsedSeconds,
       goalSeconds: timer.goalSeconds,
@@ -145,6 +146,13 @@ export default function TimerPage() {
           </div>
         )}
       </div>
+
+      {boostMultiplier > 1 && (
+        <div className="mb-5 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400/15 via-fuchsia-400/15 to-accent-400/15 px-4 py-2.5 ring-1 ring-fuchsia-400/25">
+          <SparkleIcon className="h-4 w-4 text-fuchsia-300" />
+          <span className="text-sm font-bold text-white">XP{boostMultiplier}倍ブースター適用中</span>
+        </div>
+      )}
 
       {active ? (
         <ActiveTimer

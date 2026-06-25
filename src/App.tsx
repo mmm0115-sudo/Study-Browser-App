@@ -7,6 +7,7 @@ import Onboarding from "./pages/Onboarding";
 import TimerPage from "./pages/TimerPage";
 import RankingPage from "./pages/RankingPage";
 import ProfilePage from "./pages/ProfilePage";
+import BoosterPage from "./pages/BoosterPage";
 import { BoltIcon } from "./components/icons";
 
 function Splash() {
@@ -38,6 +39,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RankingPage />} />
         <Route path="/timer" element={<TimerPage />} />
+        <Route path="/booster" element={<BoosterPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

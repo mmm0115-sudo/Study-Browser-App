@@ -8,13 +8,18 @@
  *  - さらに目標達成ボーナスとして、目標分数の 20% を加算（やる気ブースト）。
  *  - 目標未達成で終了した場合: スコアは入らない（時間は記録だけ残る）。
  */
-export function calcEarnedScore(elapsedSeconds: number, goalSeconds: number): number {
+export function calcEarnedScore(
+  elapsedSeconds: number,
+  goalSeconds: number,
+  multiplier = 1
+): number {
   const achieved = elapsedSeconds >= goalSeconds && goalSeconds > 0;
   if (!achieved) return 0;
   const focusedMinutes = Math.floor(elapsedSeconds / 60);
   const goalMinutes = Math.floor(goalSeconds / 60);
   const bonus = Math.floor(goalMinutes * 0.2);
-  return focusedMinutes + bonus;
+  const base = focusedMinutes + bonus;
+  return Math.round(base * multiplier);
 }
 
 export function isAchieved(elapsedSeconds: number, goalSeconds: number): boolean {

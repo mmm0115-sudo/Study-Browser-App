@@ -21,6 +21,16 @@ export interface UserProfile {
   streak: number;
   /** 初回セットアップ（ニックネーム設定）を完了したか */
   onboarded?: boolean;
+  /** XPブースター契約中か（サーバー＝Cloud Functions のみが書き込む） */
+  boosterActive?: boolean;
+  /** ブースター中のXP倍率（通常2） */
+  boosterMultiplier?: number;
+  /** Stripe 契約ステータス（active / canceled など） */
+  boosterStatus?: string;
+  /** Stripe 顧客ID（サーバーが設定） */
+  stripeCustomerId?: string;
+  /** Stripe サブスクID（サーバーが設定） */
+  stripeSubscriptionId?: string;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 }

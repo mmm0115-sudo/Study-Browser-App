@@ -3,11 +3,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AmbientBackground from "./AmbientBackground";
 import Avatar from "./Avatar";
-import { TimerIcon, TrophyIcon, UserIcon, BoltIcon } from "./icons";
+import { TimerIcon, TrophyIcon, UserIcon, BoltIcon, SparkleIcon } from "./icons";
 
 const NAV = [
   { to: "/", label: "ランキング", Icon: TrophyIcon },
   { to: "/timer", label: "勉強する", Icon: TimerIcon },
+  { to: "/booster", label: "ブースター", Icon: SparkleIcon },
   { to: "/profile", label: "マイページ", Icon: UserIcon },
 ];
 

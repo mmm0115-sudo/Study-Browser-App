@@ -8,14 +8,35 @@ service cloud.firestore {
       // ログイン済みなら全員のプロフィールを読める（ランキング表示のため）
       allow read: if request.auth != null;
 
-      // 自分のドキュメントだけ作成・更新できる
-      allow create, update: if request.auth != null && request.auth.uid == uid;
+      // 作成は本人のみ
+      allow create: if request.auth != null && request.auth.uid == uid;
+
+      // 更新は本人のみ。ただし課金関連フィールドはクライアントから変更不可
+      // （ブースターの有効化は Cloud Functions = Admin SDK だけが行う）。
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && unchanged('boosterActive')
+                    && unchanged('boosterMultiplier')
+                    && unchanged('boosterStatus')
+                    && unchanged('stripeCustomerId')
+                    && unchanged('stripeSubscriptionId');
+
       allow delete: if false;
 
-      // 勉強セッション履歴は本人のみ読み書き可
+      // 勉強セッション履歴は本人のみ
       match /sessions/{sessionId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    // Stripe顧客 → uid の逆引き。サーバー専用（クライアントは触れない）。
+    match /stripeCustomers/{customerId} {
+      allow read, write: if false;
+    }
+  }
+
+  // 指定フィールドが更新前後で変わっていないことを保証する
+  function unchanged(field) {
+    return request.resource.data.get(field, null) == resource.data.get(field, null);
   }
 }
