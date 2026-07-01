@@ -78,7 +78,7 @@ export default function Login() {
           集中して、競って、<span className="text-gradient">伸びる。</span>
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-center text-sm leading-relaxed text-white/55">
-          目標時間を達成した分だけスコアが貯まり、ランキングで競えます。
+          集中した時間がXPになり、毎日のクエストと週間ランキングで楽しく続けられます。
         </p>
 
         <div className="glass mt-7 rounded-3xl p-6">

@@ -8,6 +8,7 @@ import { BoltIcon, TrophyIcon } from "../components/icons";
 export default function Onboarding() {
   const { user, profile } = useAuth();
   const [name, setName] = useState(profile?.displayName ?? user?.displayName ?? "");
+  const [dailyGoal, setDailyGoal] = useState(60);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,11 @@ export default function Onboarding() {
     setSaving(true);
     setError(null);
     try {
-      await updateUserSettings(user.uid, { displayName: trimmed, onboarded: true });
+      await updateUserSettings(user.uid, {
+        displayName: trimmed,
+        dailyGoalMinutes: dailyGoal,
+        onboarded: true,
+      });
     } catch (e) {
       console.error(e);
       setError("保存に失敗しました。通信環境を確認してください。");
@@ -81,6 +86,28 @@ export default function Onboarding() {
               目標時間を決めて勉強 → 達成するとスコアが貯まり、
               みんなとランキングで競えます。さっそく始めましょう！
             </p>
+          </div>
+
+          <div className="mt-5">
+            <label className="mb-2 block text-xs font-medium text-white/50">
+              1日の目標
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[30, 60, 90, 120].map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  onClick={() => setDailyGoal(minutes)}
+                  className={`rounded-xl py-2.5 text-sm font-bold transition ${
+                    dailyGoal === minutes
+                      ? "bg-accent-500 text-white"
+                      : "bg-white/5 text-white/55 ring-1 ring-white/10"
+                  }`}
+                >
+                  {minutes}分
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && <p className="mt-3 text-center text-xs text-rose-300">{error}</p>}

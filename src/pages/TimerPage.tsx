@@ -24,6 +24,7 @@ export default function TimerPage() {
   const [completion, setCompletion] = useState<Completion | null>(null);
   const [saving, setSaving] = useState(false);
   const [fireConfetti, setFireConfetti] = useState(false);
+  const [breakUntil, setBreakUntil] = useState<number | null>(null);
   const celebratedRef = useRef(false);
 
   // 時計（現在時刻）
@@ -49,8 +50,26 @@ export default function TimerPage() {
       window.setTimeout(() => setFireConfetti(false), 200);
       // 軽い振動（対応端末のみ）
       if ("vibrate" in navigator) navigator.vibrate?.([40, 60, 40]);
+      if (profile?.soundEnabled !== false) playChime();
+      if (profile?.notificationsEnabled && "Notification" in window && Notification.permission === "granted") {
+        new Notification("StudyQuest：目標達成！", {
+          body: `${timer.label || "集中セッション"}を達成しました。おつかれさま！`,
+          icon: "./favicon.svg",
+        });
+      }
     }
-  }, [achieved, timer.status]);
+  }, [achieved, profile?.notificationsEnabled, profile?.soundEnabled, timer.label, timer.status]);
+
+  useEffect(() => {
+    if (timer.status === "idle") {
+      document.title = "StudyQuest — 今日も一歩進もう";
+      return;
+    }
+    document.title = `${formatClock(achieved ? timer.elapsedSeconds : remaining)} · ${timer.label || "集中中"}`;
+    return () => {
+      document.title = "StudyQuest — 集中して、競って、伸びる勉強タイマー";
+    };
+  }, [achieved, remaining, timer.elapsedSeconds, timer.label, timer.status]);
 
   // 画面が消えないようにする（Wake Lock）
   useEffect(() => {
@@ -92,7 +111,7 @@ export default function TimerPage() {
     });
   }
 
-  async function handleConfirmSave() {
+  async function handleConfirmSave(startBreak = false) {
     if (!completion || !user) return;
     setSaving(true);
     try {
@@ -105,6 +124,7 @@ export default function TimerPage() {
       });
       setCompletion(null);
       timer.reset();
+      if (startBreak) setBreakUntil(Date.now() + 5 * 60 * 1000);
     } catch (e) {
       console.error("保存に失敗", e);
       alert("保存に失敗しました。通信環境をご確認ください。");
@@ -146,7 +166,14 @@ export default function TimerPage() {
         )}
       </div>
 
-      {active ? (
+      {breakUntil ? (
+        <BreakTimer
+          until={breakUntil}
+          soundEnabled={profile?.soundEnabled !== false}
+          notificationsEnabled={profile?.notificationsEnabled === true}
+          onFinish={() => setBreakUntil(null)}
+        />
+      ) : active ? (
         <ActiveTimer
           elapsed={timer.elapsedSeconds}
           goal={timer.goalSeconds}
@@ -158,6 +185,7 @@ export default function TimerPage() {
           onPause={timer.pause}
           onResume={timer.resume}
           onFinish={handleFinish}
+          onExtend={(minutes) => timer.extendGoal(minutes * 60)}
         />
       ) : (
         <GoalSetup
@@ -177,7 +205,8 @@ export default function TimerPage() {
         earnedScore={completion?.earnedScore ?? 0}
         label={completion?.label ?? ""}
         saving={saving}
-        onConfirm={handleConfirmSave}
+        onConfirm={() => handleConfirmSave(false)}
+        onConfirmBreak={() => handleConfirmSave(true)}
         onDiscard={handleDiscard}
       />
     </div>
@@ -197,6 +226,7 @@ function ActiveTimer({
   onPause,
   onResume,
   onFinish,
+  onExtend,
 }: {
   elapsed: number;
   goal: number;
@@ -208,6 +238,7 @@ function ActiveTimer({
   onPause: () => void;
   onResume: () => void;
   onFinish: () => void;
+  onExtend: (minutes: number) => void;
 }) {
   return (
     <div className="flex flex-col items-center">
@@ -265,8 +296,22 @@ function ActiveTimer({
       <p className="mt-4 text-center text-xs text-white/35">
         {achieved
           ? "このまま続けると時間がさらに加算されます。停止すると記録できます。"
-          : "目標を達成するとスコアが貯まります。途中でやめても時間は記録できます。"}
+          : "集中した時間はXPになります。目標達成でボーナスXPも獲得できます。"}
       </p>
+      {achieved && (
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-xs text-white/45">目標を延長</span>
+          {[5, 15].map((minutes) => (
+            <button
+              key={minutes}
+              onClick={() => onExtend(minutes)}
+              className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 ring-1 ring-white/10"
+            >
+              +{minutes}分
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -321,7 +366,7 @@ function GoalSetup({
       <div className="glass w-full rounded-3xl p-6 sm:p-7">
         <h2 className="font-display text-lg font-bold">今日の目標を決めよう</h2>
         <p className="mt-1 text-sm text-white/50">
-          目標を達成すると、その時間分のスコアが貯まります。
+          集中1分で1XP。目標達成でボーナスXPも獲得できます。
         </p>
 
         {/* 目標時間プリセット */}
@@ -397,4 +442,81 @@ function MiniStat({ icon, value, unit }: { icon: React.ReactNode; value: string;
       <span className="text-[11px] text-white/40">{unit}</span>
     </div>
   );
+}
+
+function BreakTimer({
+  until,
+  soundEnabled,
+  notificationsEnabled,
+  onFinish,
+}: {
+  until: number;
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  onFinish: () => void;
+}) {
+  const [remaining, setRemaining] = useState(() => Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+  const notified = useRef(false);
+
+  useEffect(() => {
+    const tick = () => setRemaining(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+    tick();
+    const id = window.setInterval(tick, 500);
+    return () => window.clearInterval(id);
+  }, [until]);
+
+  useEffect(() => {
+    if (remaining > 0 || notified.current) return;
+    notified.current = true;
+    if (soundEnabled) playChime();
+    if (notificationsEnabled && "Notification" in window && Notification.permission === "granted") {
+      new Notification("StudyQuest：休憩終了", {
+        body: "次の集中を始める準備ができました。",
+        icon: "./favicon.svg",
+      });
+    }
+  }, [notificationsEnabled, remaining, soundEnabled]);
+
+  return (
+    <div className="glass-strong flex flex-col items-center rounded-3xl px-6 py-10 text-center">
+      <span className="rounded-full bg-mint-400/10 px-4 py-1.5 text-xs font-bold text-mint-400 ring-1 ring-mint-400/25">
+        休憩中
+      </span>
+      <h2 className="mt-5 font-display text-2xl font-extrabold">目と肩を休めよう</h2>
+      <p className="mt-2 text-sm text-white/55">水分補給して、少し遠くを見てみよう。</p>
+      <div className="tabular my-8 font-display text-7xl font-extrabold text-gradient">
+        {formatClock(remaining)}
+      </div>
+      <button
+        onClick={onFinish}
+        className="w-full max-w-xs rounded-2xl bg-gradient-to-r from-accent-500 to-violet-400 px-5 py-3.5 font-bold text-white"
+      >
+        {remaining === 0 ? "次の集中へ" : "休憩を終える"}
+      </button>
+    </div>
+  );
+}
+
+function playChime() {
+  try {
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.65);
+    gain.connect(context.destination);
+    [659.25, 783.99].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      oscillator.connect(gain);
+      oscillator.start(context.currentTime + index * 0.12);
+      oscillator.stop(context.currentTime + 0.6);
+    });
+    window.setTimeout(() => context.close().catch(() => {}), 900);
+  } catch {
+    // 音声API非対応時は振動・通知だけを使う
+  }
 }

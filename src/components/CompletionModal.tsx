@@ -10,6 +10,7 @@ interface Props {
   label: string;
   saving: boolean;
   onConfirm: () => void;
+  onConfirmBreak: () => void;
   onDiscard: () => void;
 }
 
@@ -22,13 +23,19 @@ export default function CompletionModal({
   label,
   saving,
   onConfirm,
+  onConfirmBreak,
   onDiscard,
 }: Props) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center">
-      <div className="glass-strong w-full max-w-sm rounded-3xl p-6 animate-pop-in">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="completion-title"
+        className="glass-strong w-full max-w-sm rounded-3xl p-6 animate-pop-in"
+      >
         <div className="flex flex-col items-center text-center">
           <span
             className={`flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-lg ${
@@ -40,7 +47,7 @@ export default function CompletionModal({
             <CheckIcon className="h-8 w-8" />
           </span>
 
-          <h2 className="mt-4 font-display text-xl font-extrabold">
+          <h2 id="completion-title" className="mt-4 font-display text-xl font-extrabold">
             {achieved ? "目標達成！おつかれさま 🎉" : "セッション終了"}
           </h2>
           <p className="mt-1 text-sm text-white/55">
@@ -59,7 +66,7 @@ export default function CompletionModal({
             }`}
           >
             <BoltIcon className={`h-5 w-5 ${achieved ? "text-mint-400" : "text-white/40"}`} />
-            <span className="text-sm text-white/60">獲得スコア</span>
+            <span className="text-sm text-white/60">獲得XP</span>
             <span
               className={`tabular font-display text-2xl font-extrabold ${
                 achieved ? "text-mint-400" : "text-white/50"
@@ -71,13 +78,13 @@ export default function CompletionModal({
 
           {!achieved && (
             <p className="mt-3 text-xs leading-relaxed text-amber-200/80">
-              目標未達のためスコアは加算されません。
+              途中までの集中時間もXPになります。
               <br />
-              でも勉強時間はしっかり記録されます💪
+              次は少し短い目標から試してみよう 💪
             </p>
           )}
 
-          <div className="mt-6 flex w-full gap-3">
+          <div className="mt-6 grid w-full grid-cols-2 gap-3">
             <button
               onClick={onDiscard}
               disabled={saving}
@@ -88,11 +95,18 @@ export default function CompletionModal({
             <button
               onClick={onConfirm}
               disabled={saving}
-              className="flex-[1.6] rounded-2xl bg-gradient-to-r from-accent-500 to-violet-400 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-accent-500/30 transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
+              className="rounded-2xl bg-gradient-to-r from-accent-500 to-violet-400 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-accent-500/30 transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
             >
               {saving ? "保存中…" : "記録する"}
             </button>
           </div>
+          <button
+            onClick={onConfirmBreak}
+            disabled={saving}
+            className="mt-3 w-full rounded-2xl bg-mint-400/10 px-4 py-3 text-sm font-bold text-mint-400 ring-1 ring-mint-400/25 transition hover:bg-mint-400/15 disabled:opacity-50"
+          >
+            記録して5分休憩
+          </button>
         </div>
       </div>
     </div>

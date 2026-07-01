@@ -1,13 +1,17 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import AmbientBackground from "./components/AmbientBackground";
-import Login from "./pages/Login";
-import Onboarding from "./pages/Onboarding";
-import TimerPage from "./pages/TimerPage";
-import RankingPage from "./pages/RankingPage";
-import ProfilePage from "./pages/ProfilePage";
 import { BoltIcon } from "./components/icons";
+
+const Login = lazy(() => import("./pages/Login"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const HomePage = lazy(() => import("./pages/HomePage"));
+const TimerPage = lazy(() => import("./pages/TimerPage"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const RankingPage = lazy(() => import("./pages/RankingPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
 function Splash() {
   return (
@@ -27,20 +31,24 @@ export default function App() {
   const { user, profile, loading } = useAuth();
 
   if (loading) return <Splash />;
-  if (!user) return <Login />;
+  if (!user) return <Suspense fallback={<Splash />}><Login /></Suspense>;
   // ログイン済みだがプロフィール取得中
   if (!profile) return <Splash />;
   // 初回セットアップ未完了
-  if (!profile.onboarded) return <Onboarding />;
+  if (!profile.onboarded) return <Suspense fallback={<Splash />}><Onboarding /></Suspense>;
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<RankingPage />} />
-        <Route path="/timer" element={<TimerPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-3xl bg-white/[0.04]" />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/timer" element={<TimerPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }

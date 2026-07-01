@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -18,9 +19,31 @@ import { localDateKey, localWeekKey, daysBetween } from "../lib/format";
 import { calcEarnedScore, MAX_SESSION_SECONDS, MIN_STREAK_SECONDS } from "../lib/score";
 
 const usersCol = collection(db, "users");
+const publicProfilesCol = collection(db, "publicProfiles");
 
 function userRef(uid: string) {
   return doc(usersCol, uid);
+}
+
+function publicProfileRef(uid: string) {
+  return doc(publicProfilesCol, uid);
+}
+
+function publicProfileData(profile: UserProfile) {
+  return {
+    uid: profile.uid,
+    displayName: profile.displayName ?? "名無しの勉強家",
+    photoURL: profile.photoURL ?? "",
+    totalScore: profile.totalScore ?? 0,
+    totalSeconds: profile.totalSeconds ?? 0,
+    goalsAchieved: profile.goalsAchieved ?? 0,
+    streak: profile.streak ?? 0,
+    weekKey: profile.weekKey ?? localWeekKey(),
+    weekScore: profile.weekScore ?? 0,
+    weekSeconds: profile.weekSeconds ?? 0,
+    weekSessions: profile.weekSessions ?? 0,
+    updatedAt: serverTimestamp(),
+  };
 }
 
 /** ログイン時にプロフィールを作成 or 表示名/写真を更新して返す */
@@ -58,7 +81,9 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    return { ...fresh, createdAt: null, updatedAt: null };
+    const created = { ...fresh, createdAt: null, updatedAt: null };
+    await setDoc(publicProfileRef(user.uid), publicProfileData(created));
+    return created;
   }
 
   // アイコンだけ Google と同期する。
@@ -78,7 +103,13 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
   if (Object.keys(defaults).length > 0) {
     await setDoc(ref, { ...defaults, updatedAt: serverTimestamp() }, { merge: true });
   }
-  return { ...data, ...defaults, uid: user.uid };
+  const merged = { ...data, ...defaults, uid: user.uid };
+  if (merged.rankingPublic !== false) {
+    await setDoc(publicProfileRef(user.uid), publicProfileData(merged), { merge: true });
+  } else {
+    await deleteDoc(publicProfileRef(user.uid));
+  }
+  return merged;
 }
 
 /** 表示名やオンボーディング状態など、ユーザー設定を更新する */
@@ -98,6 +129,16 @@ export async function updateUserSettings(
     { ...fields, updatedAt: serverTimestamp() },
     { merge: true }
   );
+  if (fields.displayName !== undefined || fields.rankingPublic !== undefined) {
+    const snap = await getDoc(userRef(uid));
+    if (!snap.exists()) return;
+    const profile = { ...(snap.data() as UserProfile), uid };
+    if (profile.rankingPublic === false) {
+      await deleteDoc(publicProfileRef(uid));
+    } else {
+      await setDoc(publicProfileRef(uid), publicProfileData(profile), { merge: true });
+    }
+  }
 }
 
 /** プロフィールの購読（リアルタイム反映） */
@@ -174,6 +215,27 @@ export async function commitSession(uid: string, result: SessionResult): Promise
       updatedAt: serverTimestamp(),
     });
 
+    if (p.rankingPublic !== false) {
+      tx.set(
+        publicProfileRef(uid),
+        {
+          uid,
+          displayName: p.displayName ?? "名無しの勉強家",
+          photoURL: p.photoURL ?? "",
+          totalScore: (p.totalScore || 0) + safeResult.earnedScore,
+          totalSeconds: (p.totalSeconds || 0) + safeElapsed,
+          goalsAchieved: (p.goalsAchieved || 0) + (safeResult.achieved ? 1 : 0),
+          streak,
+          weekKey: week,
+          weekScore,
+          weekSeconds,
+          weekSessions,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+
     tx.set(sessionRef, {
       ...safeResult,
       date: today,
@@ -188,10 +250,14 @@ export async function fetchLeaderboard(
   period: "weekly" | "all" = "weekly"
 ): Promise<LeaderboardEntry[]> {
   const scoreField = period === "weekly" ? "weekScore" : "totalScore";
-  const q = query(usersCol, orderBy(scoreField, "desc"), limit(Math.min(200, max * 2)));
+  const q = query(publicProfilesCol, orderBy(scoreField, "desc"), limit(Math.min(200, max * 2)));
   const snap = await getDocs(q);
   const week = localWeekKey();
   return snap.docs
+    .filter((d) => {
+      const data = d.data() as UserProfile;
+      return period === "all" || data.weekKey === week;
+    })
     .map((d) => {
       const data = d.data() as UserProfile;
       const currentWeek = data.weekKey === week;
@@ -206,12 +272,9 @@ export async function fetchLeaderboard(
         weekScore: currentWeek ? data.weekScore ?? 0 : 0,
         weekSeconds: currentWeek ? data.weekSeconds ?? 0 : 0,
         weekSessions: currentWeek ? data.weekSessions ?? 0 : 0,
-        rankingPublic: data.rankingPublic !== false,
       };
     })
-    .filter((entry) => entry.rankingPublic)
-    .slice(0, max)
-    .map(({ rankingPublic: _rankingPublic, ...entry }) => entry);
+    .slice(0, max);
 }
 
 /** 新しい順に学習履歴を取得 */

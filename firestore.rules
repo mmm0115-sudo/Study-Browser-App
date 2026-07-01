@@ -5,28 +5,64 @@ service cloud.firestore {
 
     // ユーザープロフィール
     match /users/{uid} {
-      // ログイン済みなら全員のプロフィールを読める（ランキング表示のため）
-      allow read: if request.auth != null;
+      // 学習統計を含む本体は本人だけが読める。
+      allow read: if request.auth != null && request.auth.uid == uid;
 
-      // 作成は本人のみ
-      allow create: if request.auth != null && request.auth.uid == uid;
+      // 作成は本人のみ。集計値を0から始める。
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.totalScore == 0
+                    && request.resource.data.totalSeconds == 0
+                    && request.resource.data.totalSessions == 0
+                    && request.resource.data.goalsAchieved == 0
+                    && request.resource.data.todaySeconds == 0
+                    && request.resource.data.streak == 0
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() >= 1
+                    && request.resource.data.displayName.size() <= 20;
 
-      // 更新は本人のみ。ただし課金関連フィールドはクライアントから変更不可
-      // （ブースターの有効化は Cloud Functions = Admin SDK だけが行う）。
+      // 本人のみ。設定変更か、制限された範囲のセッション集計更新だけを許可。
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && unchanged('boosterActive')
                     && unchanged('boosterMultiplier')
                     && unchanged('boosterStatus')
                     && unchanged('stripeCustomerId')
-                    && unchanged('stripeSubscriptionId');
+                    && unchanged('stripeSubscriptionId')
+                    && (validSettingsUpdate()
+                        || validSessionAggregateUpdate()
+                        || validDefaultsMigration());
 
       allow delete: if false;
 
       // 勉強セッション履歴は本人のみ
       match /sessions/{sessionId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null
+                      && request.auth.uid == uid
+                      && request.resource.data.elapsedSeconds is int
+                      && request.resource.data.elapsedSeconds >= 1
+                      && request.resource.data.elapsedSeconds <= 14400
+                      && request.resource.data.goalSeconds is int
+                      && request.resource.data.goalSeconds >= 60
+                      && request.resource.data.goalSeconds <= 14400
+                      && request.resource.data.earnedScore is int
+                      && request.resource.data.earnedScore >= 0
+                      && request.resource.data.earnedScore <= 300
+                      && request.resource.data.label is string
+                      && request.resource.data.label.size() <= 24;
+        allow update, delete: if false;
       }
+    }
+
+    // ランキングに必要な項目だけを分離した公開プロフィール
+    match /publicProfiles/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+                            && request.auth.uid == uid
+                            && validPublicProfile(uid);
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     // Stripe顧客 → uid の逆引き。サーバー専用（クライアントは触れない）。
@@ -38,5 +74,101 @@ service cloud.firestore {
   // 指定フィールドが更新前後で変わっていないことを保証する
   function unchanged(field) {
     return request.resource.data.get(field, null) == resource.data.get(field, null);
+  }
+
+  function validSettingsUpdate() {
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'displayName',
+      'onboarded',
+      'dailyGoalMinutes',
+      'rankingPublic',
+      'soundEnabled',
+      'notificationsEnabled',
+      'updatedAt'
+    ])
+    && request.resource.data.displayName is string
+    && request.resource.data.displayName.size() >= 1
+    && request.resource.data.displayName.size() <= 20
+    && request.resource.data.get('dailyGoalMinutes', 60) is int
+    && request.resource.data.get('dailyGoalMinutes', 60) >= 5
+    && request.resource.data.get('dailyGoalMinutes', 60) <= 600;
+  }
+
+  function validSessionAggregateUpdate() {
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'totalScore',
+      'totalSeconds',
+      'totalSessions',
+      'goalsAchieved',
+      'todaySeconds',
+      'todayDate',
+      'lastStudyDate',
+      'streak',
+      'weekKey',
+      'weekScore',
+      'weekSeconds',
+      'weekSessions',
+      'updatedAt'
+    ])
+    && request.resource.data.totalSessions == resource.data.totalSessions + 1
+    && request.resource.data.totalSeconds > resource.data.totalSeconds
+    && request.resource.data.totalSeconds <= resource.data.totalSeconds + 14400
+    && request.resource.data.totalScore >= resource.data.totalScore
+    && request.resource.data.totalScore <= resource.data.totalScore + 300
+    && request.resource.data.goalsAchieved >= resource.data.goalsAchieved
+    && request.resource.data.goalsAchieved <= resource.data.goalsAchieved + 1
+    && request.resource.data.weekSessions >= 1
+    && request.resource.data.weekSeconds >= 1
+    && request.resource.data.weekScore >= 0;
+  }
+
+  function validDefaultsMigration() {
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'photoURL',
+      'dailyGoalMinutes',
+      'rankingPublic',
+      'soundEnabled',
+      'notificationsEnabled',
+      'todayDate',
+      'weekKey',
+      'weekScore',
+      'weekSeconds',
+      'weekSessions',
+      'updatedAt'
+    ])
+    && request.resource.data.get('dailyGoalMinutes', 60) >= 5
+    && request.resource.data.get('dailyGoalMinutes', 60) <= 600
+    && request.resource.data.get('weekScore', 0) == resource.data.get('weekScore', 0)
+    && request.resource.data.get('weekSeconds', 0) == resource.data.get('weekSeconds', 0)
+    && request.resource.data.get('weekSessions', 0) == resource.data.get('weekSessions', 0);
+  }
+
+  function validPublicProfile(uid) {
+    let privateProfile = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+    return request.resource.data.keys().hasOnly([
+      'uid',
+      'displayName',
+      'photoURL',
+      'totalScore',
+      'totalSeconds',
+      'goalsAchieved',
+      'streak',
+      'weekKey',
+      'weekScore',
+      'weekSeconds',
+      'weekSessions',
+      'updatedAt'
+    ])
+    && request.resource.data.uid == uid
+    && request.resource.data.displayName == privateProfile.displayName
+    && request.resource.data.photoURL == privateProfile.photoURL
+    && request.resource.data.totalScore == privateProfile.totalScore
+    && request.resource.data.totalSeconds == privateProfile.totalSeconds
+    && request.resource.data.goalsAchieved == privateProfile.goalsAchieved
+    && request.resource.data.streak == privateProfile.streak
+    && request.resource.data.weekKey == privateProfile.weekKey
+    && request.resource.data.weekScore == privateProfile.weekScore
+    && request.resource.data.weekSeconds == privateProfile.weekSeconds
+    && request.resource.data.weekSessions == privateProfile.weekSessions;
   }
 }

@@ -13,19 +13,20 @@ export default function RankingPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<"weekly" | "all">("weekly");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setEntries(await fetchLeaderboard(100));
+      setEntries(await fetchLeaderboard(100, period));
     } catch (e) {
       console.error(e);
       setError("ランキングを取得できませんでした。");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {
     load();
@@ -44,7 +45,7 @@ export default function RankingPage() {
       <header className="mb-4 flex items-end justify-between">
         <div>
           <h1 className="font-display text-2xl font-extrabold">ランキング</h1>
-          <p className="mt-1 text-sm text-white/50">達成スコアで競い合おう</p>
+          <p className="mt-1 text-sm text-white/50">同じ一週間の努力で競い合おう</p>
         </div>
         <button
           onClick={load}
@@ -53,6 +54,23 @@ export default function RankingPage() {
           更新
         </button>
       </header>
+
+      <div className="mb-4 grid grid-cols-2 rounded-2xl bg-white/5 p-1 ring-1 ring-white/10">
+        {([
+          ["weekly", "今週"],
+          ["all", "累計"],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setPeriod(value)}
+            className={`rounded-xl py-2.5 text-sm font-bold transition ${
+              period === value ? "bg-white/10 text-white shadow" : "text-white/45"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <SkeletonList />
@@ -65,11 +83,11 @@ export default function RankingPage() {
         />
       ) : (
         <>
-          {podium.length > 0 && <Podium entries={podium} meUid={user?.uid} />}
+          {podium.length > 0 && <Podium entries={podium} meUid={user?.uid} period={period} />}
 
           <div className="mt-4 space-y-2">
             {rest.map((e, i) => (
-              <Row key={e.uid} rank={i + 4} entry={e} isMe={e.uid === user?.uid} />
+              <Row key={e.uid} rank={i + 4} entry={e} isMe={e.uid === user?.uid} period={period} />
             ))}
           </div>
 
@@ -95,7 +113,7 @@ function Hero({
 }) {
   const today = localDateKey();
   const studiedToday =
-    profile?.lastStudyDate === today && (profile?.todaySeconds ?? 0) > 0;
+    (profile?.todayDate ?? profile?.lastStudyDate) === today && (profile?.todaySeconds ?? 0) > 0;
   const name = profile?.displayName ?? "あなた";
 
   const headline = studiedToday
@@ -147,18 +165,26 @@ function Pill({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function Podium({ entries, meUid }: { entries: LeaderboardEntry[]; meUid?: string }) {
+function Podium({
+  entries,
+  meUid,
+  period,
+}: {
+  entries: LeaderboardEntry[];
+  meUid?: string;
+  period: "weekly" | "all";
+}) {
   // 2位・1位・3位 の順で表示（中央を高く）
-  const order = [entries[1], entries[0], entries[2]].filter(Boolean);
-  const heights = ["h-24", "h-32", "h-20"];
-  const ranks = [2, 1, 3];
-  const medals = ["🥈", "🥇", "🥉"];
+  const slots = [
+    { entry: entries[1], rank: 2, height: "h-24", medal: "🥈" },
+    { entry: entries[0], rank: 1, height: "h-32", medal: "🥇" },
+    { entry: entries[2], rank: 3, height: "h-20", medal: "🥉" },
+  ].filter((slot): slot is typeof slot & { entry: LeaderboardEntry } => Boolean(slot.entry));
 
   return (
     <div className="glass rounded-3xl p-5">
       <div className="flex items-end justify-center gap-3">
-        {order.map((e, i) => {
-          const rank = ranks[i];
+        {slots.map(({ entry: e, rank, height, medal }) => {
           return (
             <div key={e.uid} className="flex flex-1 flex-col items-center">
               <div className="relative mb-2">
@@ -168,14 +194,16 @@ function Podium({ entries, meUid }: { entries: LeaderboardEntry[]; meUid?: strin
                   size={rank === 1 ? 68 : 54}
                   className={rank === 1 ? "ring-2 ring-amber-400/70" : ""}
                 />
-                <span className="absolute -bottom-1 -right-1 text-lg">{medals[i]}</span>
+                <span className="absolute -bottom-1 -right-1 text-lg">{medal}</span>
               </div>
               <div className="max-w-full truncate text-center text-xs font-semibold text-white">
                 {e.uid === meUid ? "あなた" : e.displayName}
               </div>
-              <div className="tabular text-[11px] text-accent-300">{formatScore(e.totalScore)} pt</div>
+              <div className="tabular text-[11px] text-accent-300">
+                {formatScore(period === "weekly" ? e.weekScore : e.totalScore)} XP
+              </div>
               <div
-                className={`mt-2 flex w-full items-start justify-center rounded-t-xl bg-gradient-to-t pt-2 ${heights[i]} ${
+                className={`mt-2 flex w-full items-start justify-center rounded-t-xl bg-gradient-to-t pt-2 ${height} ${
                   rank === 1
                     ? "from-amber-400/10 to-amber-400/30"
                     : "from-white/5 to-white/15"
@@ -191,7 +219,19 @@ function Podium({ entries, meUid }: { entries: LeaderboardEntry[]; meUid?: strin
   );
 }
 
-function Row({ rank, entry, isMe }: { rank: number; entry: LeaderboardEntry; isMe: boolean }) {
+function Row({
+  rank,
+  entry,
+  isMe,
+  period,
+}: {
+  rank: number;
+  entry: LeaderboardEntry;
+  isMe: boolean;
+  period: "weekly" | "all";
+}) {
+  const score = period === "weekly" ? entry.weekScore : entry.totalScore;
+  const seconds = period === "weekly" ? entry.weekSeconds : entry.totalSeconds;
   return (
     <div
       className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ring-1 transition ${
@@ -218,14 +258,14 @@ function Row({ rank, entry, isMe }: { rank: number; entry: LeaderboardEntry; isM
             <FlameIcon className="h-3 w-3 text-amber-400/80" />
             {entry.streak}日
           </span>
-          <span>{formatDuration(entry.totalSeconds)}</span>
-          <span>{entry.goalsAchieved}回達成</span>
+          <span>{formatDuration(seconds)}</span>
+          <span>{period === "weekly" ? `${entry.weekSessions}回` : `${entry.goalsAchieved}回達成`}</span>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1 text-right">
         <BoltIcon className="h-4 w-4 text-accent-300" />
         <span className="tabular font-display text-base font-extrabold text-white">
-          {formatScore(entry.totalScore)}
+          {formatScore(score)}
         </span>
       </div>
     </div>

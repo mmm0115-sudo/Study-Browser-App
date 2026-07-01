@@ -3,11 +3,13 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AmbientBackground from "./AmbientBackground";
 import Avatar from "./Avatar";
-import { TimerIcon, TrophyIcon, UserIcon, BoltIcon } from "./icons";
+import { ChartIcon, HomeIcon, TimerIcon, TrophyIcon, UserIcon, BoltIcon } from "./icons";
 
 const NAV = [
-  { to: "/", label: "ランキング", Icon: TrophyIcon },
+  { to: "/", label: "ホーム", Icon: HomeIcon },
   { to: "/timer", label: "勉強する", Icon: TimerIcon },
+  { to: "/history", label: "記録", Icon: ChartIcon },
+  { to: "/ranking", label: "順位", Icon: TrophyIcon },
   { to: "/profile", label: "マイページ", Icon: UserIcon },
 ];
 
@@ -71,14 +73,14 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* モバイル用ボトムナビ */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-white/5 bg-ink-900/85 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-md items-stretch justify-around px-2 py-1.5">
+        <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 py-1.5">
           {NAV.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-medium transition ${
+                `flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium transition ${
                   isActive ? "text-accent-300" : "text-white/45"
                 }`
               }

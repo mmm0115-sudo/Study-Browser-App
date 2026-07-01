@@ -4,7 +4,7 @@ import { localDateKey } from "../lib/format";
 import { formatDuration, formatScore } from "../lib/format";
 import { updateUserSettings } from "../data/store";
 import Avatar from "../components/Avatar";
-import { BoltIcon, ClockIcon, FlameIcon, TrophyIcon, CheckIcon, LogoutIcon, TimerIcon } from "../components/icons";
+import { BellIcon, BoltIcon, ClockIcon, FlameIcon, TrophyIcon, CheckIcon, LogoutIcon, TimerIcon, VolumeIcon } from "../components/icons";
 
 export default function ProfilePage() {
   const { user, profile, logout } = useAuth();
@@ -36,10 +36,17 @@ export default function ProfilePage() {
     }
   }
   const today = localDateKey();
-  const todaySeconds = profile?.lastStudyDate === today ? profile?.todaySeconds ?? 0 : 0;
+  const todaySeconds =
+    (profile?.todayDate ?? profile?.lastStudyDate) === today ? profile?.todaySeconds ?? 0 : 0;
   const sessions = profile?.totalSessions ?? 0;
   const achieveRate =
     sessions > 0 ? Math.round(((profile?.goalsAchieved ?? 0) / sessions) * 100) : 0;
+  const achievements = [
+    { icon: "🌱", title: "はじめの一歩", description: "最初のセッションを記録", unlocked: sessions >= 1 },
+    { icon: "🔥", title: "一週間の習慣", description: "7日連続で学習", unlocked: (profile?.streak ?? 0) >= 7 },
+    { icon: "⏳", title: "10時間の旅", description: "累計10時間集中", unlocked: (profile?.totalSeconds ?? 0) >= 36_000 },
+    { icon: "🎯", title: "目標ハンター", description: "目標を50回達成", unlocked: (profile?.goalsAchieved ?? 0) >= 50 },
+  ];
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -48,6 +55,34 @@ export default function ProfilePage() {
     } finally {
       setLoggingOut(false);
     }
+  }
+
+  async function setPreference(
+    fields: Parameters<typeof updateUserSettings>[1]
+  ) {
+    if (!user) return;
+    try {
+      await updateUserSettings(user.uid, fields);
+    } catch (e) {
+      console.error(e);
+      alert("設定の保存に失敗しました。");
+    }
+  }
+
+  async function toggleNotifications() {
+    const next = !profile?.notificationsEnabled;
+    if (next) {
+      if (!("Notification" in window)) {
+        alert("このブラウザは通知に対応していません。");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        alert("通知が許可されませんでした。ブラウザの設定から変更できます。");
+        return;
+      }
+    }
+    await setPreference({ notificationsEnabled: next });
   }
 
   return (
@@ -157,7 +192,7 @@ export default function ProfilePage() {
         />
         <StatCard
           icon={<BoltIcon className="h-5 w-5" />}
-          label="合計スコア"
+          label="合計XP"
           value={`${formatScore(profile?.totalScore ?? 0)}`}
         />
       </div>
@@ -179,6 +214,93 @@ export default function ProfilePage() {
         </p>
       </div>
 
+      <div className="mt-4 glass rounded-3xl p-5">
+        <h2 className="font-display text-lg font-extrabold">学習設定</h2>
+        <div className="mt-4 divide-y divide-white/[0.06]">
+          <SettingRow
+            icon={<TimerIcon className="h-5 w-5" />}
+            title="1日の目標"
+            description="ホームの進捗に使います"
+          >
+            <select
+              value={profile?.dailyGoalMinutes ?? 60}
+              onChange={(event) => setPreference({ dailyGoalMinutes: Number(event.target.value) })}
+              className="rounded-xl bg-white/5 px-3 py-2 text-sm font-bold text-white outline-none ring-1 ring-white/10"
+            >
+              {[30, 45, 60, 90, 120, 180].map((minutes) => (
+                <option key={minutes} value={minutes} className="bg-ink-900">
+                  {minutes}分
+                </option>
+              ))}
+            </select>
+          </SettingRow>
+          <SettingRow
+            icon={<TrophyIcon className="h-5 w-5" />}
+            title="ランキング公開"
+            description="オフにすると一覧から非表示"
+          >
+            <Toggle
+              checked={profile?.rankingPublic !== false}
+              onChange={() => setPreference({ rankingPublic: profile?.rankingPublic === false })}
+              label="ランキング公開"
+            />
+          </SettingRow>
+          <SettingRow
+            icon={<VolumeIcon className="h-5 w-5" />}
+            title="達成音"
+            description="目標と休憩の終了時に再生"
+          >
+            <Toggle
+              checked={profile?.soundEnabled !== false}
+              onChange={() => setPreference({ soundEnabled: profile?.soundEnabled === false })}
+              label="達成音"
+            />
+          </SettingRow>
+          <SettingRow
+            icon={<BellIcon className="h-5 w-5" />}
+            title="ブラウザ通知"
+            description="画面を離れていてもお知らせ"
+          >
+            <Toggle
+              checked={profile?.notificationsEnabled === true}
+              onChange={toggleNotifications}
+              label="ブラウザ通知"
+            />
+          </SettingRow>
+        </div>
+        <p className="mt-4 text-[11px] leading-relaxed text-white/35">
+          ストリークは5分以上のセッションで更新されます。1セッションのXP加算上限は4時間です。
+        </p>
+      </div>
+
+      <div className="mt-4 glass rounded-3xl p-5">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="font-display text-lg font-extrabold">実績バッジ</h2>
+            <p className="mt-1 text-xs text-white/45">勉強の節目にアンロック</p>
+          </div>
+          <span className="text-xs font-bold text-accent-300">
+            {achievements.filter((item) => item.unlocked).length}/{achievements.length}
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {achievements.map((item) => (
+            <div
+              key={item.title}
+              className={`rounded-2xl p-3 ring-1 ${
+                item.unlocked
+                  ? "bg-accent-500/10 ring-accent-400/25"
+                  : "bg-white/[0.025] opacity-45 ring-white/5 grayscale"
+              }`}
+            >
+              <span className="text-2xl" aria-hidden="true">{item.unlocked ? item.icon : "🔒"}</span>
+              <div className="mt-2 text-xs font-bold text-white/80">{item.title}</div>
+              <div className="mt-0.5 text-[10px] leading-snug text-white/45">{item.description}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <button
         onClick={handleLogout}
         disabled={loggingOut}
@@ -190,6 +312,59 @@ export default function ProfilePage() {
 
       <p className="mt-6 text-center text-[11px] text-white/30">StudyQuest · 集中して、競って、伸びる</p>
     </div>
+  );
+}
+
+function SettingRow({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-accent-300">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold text-white/80">{title}</div>
+        <div className="text-[11px] text-white/40">{description}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+        checked ? "bg-accent-500" : "bg-white/10"
+      }`}
+    >
+      <span
+        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
+          checked ? "left-6" : "left-1"
+        }`}
+      />
+    </button>
   );
 }
 

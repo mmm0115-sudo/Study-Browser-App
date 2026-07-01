@@ -1,126 +1,113 @@
-# StudyQuest 📚⚡
+# StudyQuest
 
-目標時間を決めて集中 → 達成した分だけスコアが貯まり → オンラインランキングで競い合える勉強タイマーアプリ。
-スマホのブラウザでもPCでも快適に使えるレスポンシブ設計です。勉強中は時計・タイマーとしても使えます。
+勉強を「続けたい」に変える、クエスト型の集中タイマーです。
 
-- **フロント**: React 19 + TypeScript + Vite + Tailwind CSS v4
-- **バックエンド**: Firebase（Authentication = Googleログイン / Cloud Firestore = データ管理）
-- **公開（ホスティング）**: Firebase Hosting（無料枠で完結）
+毎日の目標を決めて集中すると、学習時間がXPとして積み上がります。デイリークエスト、レベル、学習レポート、週間ランキングを通して、小さな前進を実感しながら習慣化できます。
 
----
+## 主な機能
 
-## 1. ローカルで動かす
+- 正確な集中タイマー（バックグラウンド・再読み込みからの復元対応）
+- 1日の学習目標と進捗表示
+- デイリークエストとレベルアップ
+- 目標達成音、ブラウザ通知、5分休憩タイマー
+- 週間・累計ランキング
+- 7日間グラフと28日間ヒートマップ
+- 科目別の学習時間とセッション履歴
+- 連続学習日数（ストリーク）
+- Google／メールアドレス認証
+- スマートフォン・デスクトップ対応
+- ランキング公開設定
+
+## XPの仕組み
+
+- 集中時間1分につき1XP
+- セッション目標を達成すると、目標時間の20%をボーナスXPとして獲得
+- 目標の途中で終了しても、集中した時間分のXPを獲得
+- ストリークは5分以上のセッションで更新
+- 放置による過剰加点を防ぐため、1セッションのXP加算は最大4時間
+
+## 画面構成
+
+| 画面 | 内容 |
+| --- | --- |
+| ホーム | 今日の目標、クエスト、レベル、週間サマリー |
+| 勉強する | 目標設定、集中タイマー、休憩タイマー |
+| 記録 | 学習グラフ、ヒートマップ、科目別集計、履歴 |
+| 順位 | 今週／累計ランキング |
+| マイページ | 統計、表示名、通知、公開設定 |
+
+## 技術スタック
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS v4
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Hosting
+
+## ローカルで動かす
+
+必要なもの：
+
+- Node.js 20以降
+- Firebaseプロジェクト
 
 ```bash
+git clone <repository-url>
+cd <repository-directory>
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-ブラウザで表示される URL（通常 http://localhost:5173 ）を開きます。
-スマホの実機で確認したいときは、同じ Wi-Fi 内で表示される `http://<PCのIP>:5173` にアクセスしてください（`server.host: true` 設定済み）。
+`.env.local` にFirebase Webアプリの設定を入力してください。
 
-> Firebase の設定は `.env.local` に保存済みです（プロジェクト `study-app-92fc8`）。
-> 別プロジェクトに変える場合は `.env.local` を `.env.example` を参考に書き換えてください。
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
 
----
+Firebaseコンソールでは、次の機能を有効にします。
 
-## 2. Firebase コンソール側の初期設定（初回のみ）
+1. AuthenticationでGoogleまたはメール／パスワード認証を有効化
+2. Cloud Firestoreを作成
+3. 利用するドメインをAuthenticationの承認済みドメインへ追加
+4. `firestore.rules` をデプロイ
 
-[Firebase コンソール](https://console.firebase.google.com/project/study-app-92fc8) を開いて、以下を有効化します。
-
-### ① Google ログインを有効にする
-1. **Authentication** → **Sign-in method** タブ
-2. **Google** を選んで **有効にする** → プロジェクトのサポートメールを選択して保存
-
-### ② Firestore データベースを作成する
-1. **Firestore Database** → **データベースを作成**
-2. ロケーションを選択（例：`asia-northeast1`＝東京）
-3. **本番環境モード** で作成（セキュリティルールは後で `firebase deploy` で上書きされます）
-
-### ③ 承認済みドメインの確認
-- **Authentication** → **Settings** → **承認済みドメイン**
-- `localhost` と `study-app-92fc8.web.app` / `study-app-92fc8.firebaseapp.com` が入っていればOK
-- 独自ドメインで公開する場合はそのドメインを追加してください
-
----
-
-## 3. 公開する（無料・Firebase Hosting）
+## コマンド
 
 ```bash
-# Firebase CLI を未インストールなら
-npm install -g firebase-tools
-
-# 初回のみログイン
-firebase login
-
-# ビルドしてデプロイ（Hosting + Firestoreルール）
-npm run deploy
+npm run dev        # 開発サーバー
+npm run typecheck  # TypeScriptの検査
+npm run build      # 本番ビルド
+npm run preview    # 本番ビルドのプレビュー
+npm run deploy     # Firebaseへデプロイ
 ```
 
-デプロイ完了後、以下のURLで公開されます（誰でもアクセス可）:
+## データとプライバシー
 
-- https://study-app-92fc8.web.app
-- https://study-app-92fc8.firebaseapp.com
+ユーザーの学習統計とセッション履歴は本人だけが読み取れます。ランキングには、公開設定を有効にしたユーザーの表示名、アイコン、XP、学習時間など、順位表示に必要な情報だけを別コレクションへ同期します。
 
-> `npm run deploy` は `npm run build && firebase deploy` のショートカットです。
-> Hosting だけ更新したいときは `firebase deploy --only hosting`、
-> ルールだけなら `firebase deploy --only firestore:rules`。
+Firestoreルールでは、セッション時間とXPの増分、編集可能な設定項目を制限しています。競技性の高い公開サービスとして運用する場合は、XP集計をCloud Functionsなどの信頼できるサーバー環境へ移すことを推奨します。
 
-### GitHub Pages で公開する場合（無料）
-このプロジェクトは GitHub Pages 対応済みです（`vite.config.ts` の `base: "./"` で相対パス配信、ルーティングは `HashRouter`）。
+## ディレクトリ構成
 
-**自動デプロイ（推奨）**: `.github/workflows/deploy.yml` を同梱しています。
-1. リポジトリの **Settings → Pages → Build and deployment → Source** を **「GitHub Actions」** に設定
-2. `main`（または `master`）に push すると自動でビルド＆公開されます
-3. 公開URLは `https://<ユーザー名>.github.io/<リポジトリ名>/`
-
-**重要 — Google ログインを動かすために**:
-Firebase コンソール → **Authentication → Settings → 承認済みドメイン** に
-`<ユーザー名>.github.io` を**追加**してください。これを忘れるとログインのポップアップがブロックされます。
-
-### Vercel / Netlify で公開したい場合
-Firebase Hosting の代わりに Vercel や Netlify でも無料公開できます。
-ビルドコマンド `npm run build` / 公開ディレクトリ `dist` を指定してください。
-こちらも Firebase の **承認済みドメイン** に公開URLの追加を忘れずに。
-
----
-
-## 4. スコアの仕組み
-
-- 目標時間（例：25分）を決めて「集中スタート」。
-- タイマーが目標に到達すると **目標達成** 🎉。集中した分数がそのままスコアになります（1分 = 1pt）。
-- さらに **目標達成ボーナス**（目標分数の20%）が加算されます。
-- 目標未達で終了した場合はスコアは入りませんが、勉強時間は記録されます。
-- ランキングは全ユーザーの **合計スコア** で競います。連続学習日数（ストリーク）も記録。
-
----
-
-## 5. ディレクトリ構成
-
-```
+```text
 src/
-├─ firebase.ts            Firebase 初期化（Auth / Firestore）
-├─ types.ts               型定義
-├─ lib/
-│  ├─ format.ts           時間・スコアの整形ユーティリティ
-│  └─ score.ts            スコア計算ロジック
-├─ data/store.ts          Firestore 読み書き（プロフィール/セッション/ランキング）
-├─ contexts/AuthContext.tsx   Googleログイン状態の管理
-├─ hooks/useStudyTimer.ts     タイムスタンプ基準の正確なタイマー（リロード復元対応）
-├─ components/            UI 部品（タイマーリング・ナビ・紙吹雪 など）
-└─ pages/
-   ├─ Login.tsx           ログイン画面
-   ├─ TimerPage.tsx       メイン（タイマー / 時計 / 目標設定）
-   ├─ RankingPage.tsx     ランキング
-   └─ ProfilePage.tsx     マイページ（統計）
+├── components/       UIコンポーネント
+├── contexts/         認証状態
+├── data/             Firestoreアクセス
+├── hooks/            集中タイマー
+├── lib/              日付、XP、進捗計算
+└── pages/
+    ├── HomePage.tsx
+    ├── TimerPage.tsx
+    ├── HistoryPage.tsx
+    ├── RankingPage.tsx
+    └── ProfilePage.tsx
 ```
-
----
-
-## 6. 補足・既知の制限
-
-- スコアはクライアントから書き込む構成のため、厳密な不正対策（改ざん防止）はしていません。
-  本格的に競技性を高める場合は Cloud Functions でサーバー側集計に移行してください。
-- Firestore のセキュリティルールは `firestore.rules` にあり、
-  「自分のデータのみ書き込み可・全員のプロフィールは読み取り可（ランキング用）」になっています。
-- 画面スリープ防止に Wake Lock API を使用（対応ブラウザのみ）。

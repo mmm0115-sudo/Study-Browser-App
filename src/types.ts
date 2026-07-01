@@ -5,7 +5,7 @@ export interface UserProfile {
   uid: string;
   displayName: string;
   photoURL: string;
-  /** ランキング用スコア（達成した勉強分 + ボーナスの累計） */
+  /** ランキング用XP（集中時間 + 目標達成ボーナスの累計） */
   totalScore: number;
   /** 累計勉強秒数（達成・未達成問わず記録） */
   totalSeconds: number;
@@ -74,7 +74,7 @@ export interface SessionResult {
   goalSeconds: number;
   /** 目標を達成したか */
   achieved: boolean;
-  /** 獲得スコア */
+  /** 獲得XP */
   earnedScore: number;
   /** セッションのタイトル（科目など） */
   label: string;

@@ -110,6 +110,13 @@ export function useStudyTimer() {
     setState((s) => ({ ...s, label }));
   }, []);
 
+  const extendGoal = useCallback((seconds: number) => {
+    setState((s) => ({
+      ...s,
+      goalSeconds: Math.min(4 * 60 * 60, s.goalSeconds + Math.max(0, seconds)),
+    }));
+  }, []);
+
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -128,5 +135,6 @@ export function useStudyTimer() {
     reset,
     setGoal,
     setLabel,
+    extendGoal,
   };
 }
