@@ -17,8 +17,26 @@ export interface UserProfile {
   todaySeconds: number;
   /** 最後に勉強した日（ローカル "YYYY-MM-DD"） */
   lastStudyDate: string;
+  /** 今日の集計が属する日（ストリーク判定日とは分離） */
+  todayDate?: string;
   /** 連続学習日数 */
   streak: number;
+  /** 1日の目標時間（分） */
+  dailyGoalMinutes?: number;
+  /** 現在の週 "YYYY-MM-DD"（月曜日） */
+  weekKey?: string;
+  /** 今週獲得したスコア */
+  weekScore?: number;
+  /** 今週の集中秒数 */
+  weekSeconds?: number;
+  /** 今週のセッション数 */
+  weekSessions?: number;
+  /** ランキングに表示するか */
+  rankingPublic?: boolean;
+  /** 目標達成音を鳴らすか */
+  soundEnabled?: boolean;
+  /** ブラウザ通知を利用するか */
+  notificationsEnabled?: boolean;
   /** 初回セットアップ（ニックネーム設定）を完了したか */
   onboarded?: boolean;
   /** XPブースター契約中か（サーバー＝Cloud Functions のみが書き込む） */
@@ -43,6 +61,9 @@ export interface LeaderboardEntry {
   totalSeconds: number;
   goalsAchieved: number;
   streak: number;
+  weekScore: number;
+  weekSeconds: number;
+  weekSessions: number;
 }
 
 /** 勉強セッション完了時にサーバーへ送る結果 */
@@ -57,4 +78,11 @@ export interface SessionResult {
   earnedScore: number;
   /** セッションのタイトル（科目など） */
   label: string;
+}
+
+/** Firestore: users/{uid}/sessions/{sessionId} */
+export interface StudySession extends SessionResult {
+  id: string;
+  date: string;
+  createdAt: Timestamp | null;
 }

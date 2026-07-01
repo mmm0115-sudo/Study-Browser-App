@@ -33,6 +33,21 @@ export function localDateKey(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+/** その週の月曜日をローカル日付キーで返す */
+export function localWeekKey(d: Date = new Date()): string {
+  const monday = new Date(d);
+  const day = monday.getDay();
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+  return localDateKey(monday);
+}
+
+/** YYYY-MM-DD を短い表示へ */
+export function formatDateLabel(key: string): string {
+  const d = new Date(`${key}T00:00:00`);
+  return d.toLocaleDateString("ja-JP", { month: "short", day: "numeric", weekday: "short" });
+}
+
 /** 2つの日付キーの差（日数） */
 export function daysBetween(a: string, b: string): number {
   const da = new Date(a + "T00:00:00");

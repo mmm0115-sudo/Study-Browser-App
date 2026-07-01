@@ -38,6 +38,45 @@ export const UserIcon = (p: P) => (
   </svg>
 );
 
+export const HomeIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m3 11 9-8 9 8" />
+    <path d="M5 10v10h14V10" />
+    <path d="M9 20v-6h6v6" />
+  </svg>
+);
+
+export const ChartIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 20V10" />
+    <path d="M10 20V4" />
+    <path d="M16 20v-7" />
+    <path d="M22 20H2" />
+  </svg>
+);
+
+export const BookIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+);
+
+export const BellIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+    <path d="M10 21h4" />
+  </svg>
+);
+
+export const VolumeIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M11 5 6 9H2v6h4l5 4z" />
+    <path d="M15 9a4 4 0 0 1 0 6" />
+    <path d="M18 6a8 8 0 0 1 0 12" />
+  </svg>
+);
+
 export const PlayIcon = (p: P) => (
   <svg {...base(p)} fill="currentColor" stroke="none">
     <path d="M8 5.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 8 5.5z" />
